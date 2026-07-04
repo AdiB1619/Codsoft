@@ -24,7 +24,7 @@ public class ConsoleUI {
     public static void showBanner() {
         System.out.println("╔═══════════════════════════════════════════╗");
         System.out.println("║     🏧  JAVA BANKING SYSTEM  v1.0         ║");
-        System.out.println("║         Powered by [Your Name]            ║");
+        System.out.println("║         Powered by Aditya Bachute         ║");
         System.out.println("╚═══════════════════════════════════════════╝");
     }
 

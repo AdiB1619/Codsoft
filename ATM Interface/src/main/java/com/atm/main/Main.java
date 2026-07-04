@@ -11,7 +11,7 @@ import com.atm.util.ConsoleUI;
  * and begins the authentication lifecycle. Implements a safe shutdown hook to ensure
  * data consistency.</p>
  *
- * @author [Your Name]
+ * @author Aditya Bachute
  * @version 1.0
  * @since 2024
  */

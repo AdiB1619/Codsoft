@@ -77,7 +77,7 @@ If no existing data is found on first launch, the system automatically creates a
 ```text
 ╔═══════════════════════════════════════════╗
 ║     🏧  JAVA BANKING SYSTEM  v1.0         ║
-║         Powered by [Your Name]            ║
+║         Powered by Aditya Bachute         ║
 ╚═══════════════════════════════════════════╝
 ┌─────────────────────────────┐
 │        MAIN MENU            │
@@ -121,4 +121,4 @@ mvn test
 MIT
 
 ## 🙋 Author
-**[Your Name]** — Virtual Internship Project 2024
+**Aditya Bachute** — CodSoft Java Internship 2025
