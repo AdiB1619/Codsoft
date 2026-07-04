@@ -1,0 +1,20 @@
+# Compiled Output
+target/
+out/
+*.class
+
+# Packages (Exclude all jars, but you can explicitly add release jars later if needed)
+*.jar
+
+# IDE Workspaces and Configurations
+.idea/
+.vscode/
+*.iml
+
+# Application Data Files
+data/account.txt
+data/transactions.txt
+data/error_log.txt
+
+# Force include the data directory placeholder
+!data/.gitkeep
