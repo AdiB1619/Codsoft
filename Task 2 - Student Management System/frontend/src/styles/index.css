@@ -1,0 +1,59 @@
+/* =========================================================================
+   Global Styles — SDD Section 9
+   Import order: Tailwind directives → font defaults → base resets
+   ========================================================================= */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------------------------------------------------------------------
+   Base Resets — typography defaults from Section 9.3
+   ------------------------------------------------------------------------- */
+@layer base {
+  html {
+    /* Lexend as default body font */
+    font-family: 'Lexend', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    /* Sora for all headings */
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+  }
+
+  code, kbd, pre, samp,
+  .font-mono {
+    /* JetBrains Mono for data values */
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Respect prefers-reduced-motion — SDD Section 9.8 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Reusable component utilities — keeps Tailwind utilities DRY
+   ------------------------------------------------------------------------- */
+@layer components {
+  /* Page-level container — capped at 1280px (Section 9.5) */
+  .page-container {
+    @apply w-full max-w-content mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Focus ring — ensures WCAG AA visible focus (Section 9.6) */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+  }
+
+  /* Status badge base */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+}
