@@ -98,8 +98,20 @@ public class ExchangeRateApiClient implements ExchangeRateProvider {
     @Override
     public ExchangeRateResponse getRateDetails(String from, String to) {
         if ("YOUR_API_KEY_HERE".equals(apiKey)) {
-            log.warn("API key is not configured. Returning mock exchange rate (1.25) for {} -> {}", from, to);
-            return new ExchangeRateResponse(from, to, new BigDecimal("1.25"), LocalDate.now());
+            log.warn("API key is not configured. Falling back to open.er-api.com for {} -> {}", from, to);
+            try {
+                String openUrl = "https://open.er-api.com/v6/latest/" + from;
+                OpenApiResponse openResponse = restTemplate.getForObject(openUrl, OpenApiResponse.class);
+                if (openResponse != null && "success".equals(openResponse.result) && openResponse.rates != null) {
+                    BigDecimal rate = openResponse.rates.get(to);
+                    if (rate != null) {
+                        return new ExchangeRateResponse(from, to, rate, LocalDate.now());
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed to fetch from open API fallback", e);
+            }
+            throw new ExternalApiException("API key is not configured and open API fallback failed.");
         }
 
         String url = buildUrl(from, to);
@@ -231,5 +243,17 @@ public class ExchangeRateApiClient implements ExchangeRateProvider {
         /** The exchange rate (target units per 1 source unit) */
         @JsonProperty("conversion_rate")
         BigDecimal conversionRate;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class OpenApiResponse {
+        @JsonProperty("result")
+        String result;
+
+        @JsonProperty("base_code")
+        String baseCode;
+
+        @JsonProperty("rates")
+        java.util.Map<String, BigDecimal> rates;
     }
 }
