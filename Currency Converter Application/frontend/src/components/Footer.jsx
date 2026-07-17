@@ -2,8 +2,12 @@ import React from 'react';
 
 const Footer = () => {
   return (
-    <footer style={{ textAlign: 'center', padding: 'var(--spacing-8)', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-      <p>© {new Date().getFullYear()} NovaConvert. All rights reserved.</p>
+    <footer className="bg-white border-t border-gray-200 mt-auto">
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <p className="text-center text-sm text-gray-500">
+          &copy; {new Date().getFullYear()} Currency Converter Application. All rights reserved. Built with React, Tailwind CSS, and Spring Boot.
+        </p>
+      </div>
     </footer>
   );
 };

@@ -1,77 +1,103 @@
 import React, { useState, useEffect } from 'react';
 import { currencyService } from '../api/services';
-import Spinner from '../components/Spinner';
 import { useToast } from '../components/Toast';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { Search, List } from 'lucide-react';
 
 const Currencies = () => {
-  const { showToast } = useToast();
   const [currencies, setCurrencies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const addToast = useToast();
 
   useEffect(() => {
-    currencyService.getCurrencies()
-      .then(data => {
+    const fetchCurrencies = async () => {
+      try {
+        const data = await currencyService.getSupportedCurrencies();
         setCurrencies(data);
+      } catch (error) {
+        addToast(error.message || 'Failed to load currencies', 'error');
+      } finally {
         setLoading(false);
-      })
-      .catch(err => {
-        showToast(err.message, 'error');
-        setLoading(false);
-      });
-  }, [showToast]);
+      }
+    };
+    
+    fetchCurrencies();
+  }, [addToast]);
 
-  const filteredCurrencies = currencies.filter(c => 
-    c.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCurrencies = currencies.filter(currency => 
+    currency.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    currency.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-full min-h-[60vh]">
+        <LoadingSpinner size="lg" text="Loading supported currencies..." />
+      </div>
+    );
+  }
+
   return (
-    <div className="container animate-fade-in">
-      <div className="text-center mb-8">
-        <h2>Supported Currencies</h2>
-        <p className="text-muted">A complete list of our {currencies.length} supported global currencies.</p>
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            <List className="mr-2 text-blue-600" size={24} />
+            Supported Currencies
+          </h1>
+          
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="text-gray-400" size={18} />
+            </div>
+            <input
+              type="text"
+              placeholder="Search currencies..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="glass-panel" style={{ padding: 'var(--spacing-6)' }}>
-        <div className="form-group mb-4" style={{ maxWidth: '400px' }}>
-          <input 
-            type="text" 
-            className="form-control" 
-            placeholder="Search by code or name..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {loading ? (
-          <Spinner text="Loading currencies..." />
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {filteredCurrencies.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No currencies found matching "{searchTerm}"</p>
+          </div>
         ) : (
-          <div className="table-container">
-            <table className="table">
-              <thead>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th>Code</th>
-                  <th>Name</th>
-                  <th>Symbol</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Code
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Symbol
+                  </th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredCurrencies.length > 0 ? (
-                  filteredCurrencies.map(currency => (
-                    <tr key={currency.code}>
-                      <td style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{currency.code}</td>
-                      <td>{currency.name}</td>
-                      <td>{currency.symbol || '-'}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="3" className="text-center text-muted" style={{ padding: 'var(--spacing-6)' }}>
-                      No currencies found matching "{searchTerm}"
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredCurrencies.map((currency) => (
+                  <tr key={currency.code} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                      {currency.code}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {currency.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {currency.symbol || '-'}
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
