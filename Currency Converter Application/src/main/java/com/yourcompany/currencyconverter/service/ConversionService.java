@@ -140,6 +140,19 @@ public class ConversionService {
         return convert(request.getFrom(), request.getTo(), request.getAmount());
     }
 
+    /**
+     * Returns all currencies supported by the application.
+     *
+     * <p>Used by {@code GET /api/currencies} to let clients discover which
+     * currency codes are valid inputs for the {@code /api/convert} endpoint.
+     *
+     * @return an unmodifiable list of all {@link com.yourcompany.currencyconverter.model.entity.Currency}
+     *         records stored in the database
+     */
+    public java.util.List<com.yourcompany.currencyconverter.model.entity.Currency> getAllCurrencies() {
+        return currencyRepository.findAll();
+    }
+
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
