@@ -97,6 +97,11 @@ public class ExchangeRateApiClient implements ExchangeRateProvider {
      */
     @Override
     public ExchangeRateResponse getRateDetails(String from, String to) {
+        if ("YOUR_API_KEY_HERE".equals(apiKey)) {
+            log.warn("API key is not configured. Returning mock exchange rate (1.25) for {} -> {}", from, to);
+            return new ExchangeRateResponse(from, to, new BigDecimal("1.25"), LocalDate.now());
+        }
+
         String url = buildUrl(from, to);
         log.info("Fetching exchange rate: {} → {} from {}", from, to, apiBaseUrl);
 
