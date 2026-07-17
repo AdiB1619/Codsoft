@@ -22,7 +22,13 @@ const Favorites = () => {
           favoritesService.getFavorites(),
           currencyService.getSupportedCurrencies()
         ]);
-        setFavorites(favsData);
+        
+        // Map the array of currency code strings to full currency objects
+        const favoriteObjects = favsData
+          .map(code => currenciesData.find(c => c.code === code))
+          .filter(Boolean); // filter out any that weren't found
+          
+        setFavorites(favoriteObjects);
         setAllCurrencies(currenciesData);
       } catch (error) {
         addToast(error.message || 'Failed to load favorites data', 'error');
