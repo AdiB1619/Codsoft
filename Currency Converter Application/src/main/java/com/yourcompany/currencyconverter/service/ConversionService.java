@@ -61,16 +61,26 @@ public class ConversionService {
      * Converts {@code amount} of {@code from} currency into {@code to} currency.
      */
     @Transactional
-    public ConversionResponse convert(String from, String to, BigDecimal amount) {
+    public ConversionResponse convert(String rawFrom, String rawTo, BigDecimal amount) {
+        String from = rawFrom.toUpperCase();
+        String to = rawTo.toUpperCase();
+
         log.info("Converting {} {} → {}", amount, from, to);
 
         // Validate and retrieve full Currency entities
         Currency fromCurrency = getValidCurrency(from);
         Currency toCurrency = getValidCurrency(to);
 
-        ExchangeRateResponse rateDetails = exchangeRateProvider.getRateDetails(from, to);
-        BigDecimal rate = rateDetails.getRate();
-        log.debug("Rate fetched: 1 {} = {} {}", from, rate, to);
+        BigDecimal rate;
+        if (from.equals(to)) {
+            // Short-circuit: same currency conversion
+            rate = BigDecimal.ONE;
+            log.debug("Short-circuiting identical currency conversion: {} -> {}", from, to);
+        } else {
+            ExchangeRateResponse rateDetails = exchangeRateProvider.getRateDetails(from, to);
+            rate = rateDetails.getRate();
+            log.debug("Rate fetched: 1 {} = {} {}", from, rate, to);
+        }
 
         BigDecimal result = amount
                 .multiply(rate)

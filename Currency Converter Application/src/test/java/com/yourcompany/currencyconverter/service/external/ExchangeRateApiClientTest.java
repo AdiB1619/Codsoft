@@ -140,6 +140,30 @@ class ExchangeRateApiClientTest {
         assertThat(dto.getRate()).isEqualByComparingTo(new BigDecimal("0.04312"));
     }
 
+    @Test
+    @DisplayName("getRateDetails uses open.er-api.com fallback when API key is 'YOUR_API_KEY_HERE'")
+    void getRateDetails_withDefaultApiKey_usesFallback() {
+        // Arrange
+        ExchangeRateApiClient clientWithDefaultKey = new ExchangeRateApiClient(restTemplate, BASE_URL, "YOUR_API_KEY_HERE");
+        
+        String expectedUrl = "https://open.er-api.com/v6/latest/USD";
+        ExchangeRateApiClient.OpenApiResponse openResponse = new ExchangeRateApiClient.OpenApiResponse();
+        openResponse.result = "success";
+        openResponse.baseCode = "USD";
+        openResponse.rates = java.util.Map.of("EUR", new BigDecimal("0.85"));
+
+        when(restTemplate.getForObject(expectedUrl, ExchangeRateApiClient.OpenApiResponse.class))
+                .thenReturn(openResponse);
+
+        // Act
+        ExchangeRateResponse response = clientWithDefaultKey.getRateDetails("USD", "EUR");
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.getRate()).isEqualByComparingTo(new BigDecimal("0.85"));
+        verify(restTemplate, times(1)).getForObject(expectedUrl, ExchangeRateApiClient.OpenApiResponse.class);
+    }
+
     // -------------------------------------------------------------------------
     // Error handling tests
     // -------------------------------------------------------------------------

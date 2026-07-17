@@ -141,7 +141,6 @@ class ConversionServiceTest {
     @Test
     @DisplayName("Same-currency conversion (USD→USD, rate=1.0) returns original amount")
     void convert_sameCurrency_returnsOriginalAmount() {
-        mockRate("USD", "USD", BigDecimal.ONE);
 
         ConversionResponse response = conversionService.convert("USD", "USD", new BigDecimal("500.00"));
 
