@@ -5,6 +5,9 @@ import com.yourcompany.currencyconverter.exception.ResourceNotFoundException;
 import com.yourcompany.currencyconverter.model.dto.ConversionRequest;
 import com.yourcompany.currencyconverter.model.dto.ConversionResponse;
 import com.yourcompany.currencyconverter.model.dto.ExchangeRateResponse;
+import com.yourcompany.currencyconverter.model.entity.Currency;
+import com.yourcompany.currencyconverter.model.entity.ConversionHistory;
+import com.yourcompany.currencyconverter.repository.ConversionHistoryRepository;
 import com.yourcompany.currencyconverter.repository.CurrencyRepository;
 import com.yourcompany.currencyconverter.service.external.ExchangeRateProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,35 +21,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link ConversionService}.
- *
- * <p>Both {@link ExchangeRateProvider} and {@link CurrencyRepository} are mocked
- * with Mockito — no Spring context, no database, no HTTP calls. Tests are fast
- * and fully isolated.
- *
- * <p>Covers:
- * <ul>
- *   <li>Primary acceptance criterion: convert("USD","EUR",100) = 85 (rate 0.85).</li>
- *   <li>BigDecimal precision and HALF_UP rounding to 4 decimal places.</li>
- *   <li>{@link ConversionResponse} field population (from/to/amount/result/rate/timestamp).</li>
- *   <li>Unsupported {@code from} currency → {@link ResourceNotFoundException}.</li>
- *   <li>Unsupported {@code to} currency → {@link ResourceNotFoundException}.</li>
- *   <li>External API failure propagates as {@link ExternalApiException}.</li>
- *   <li>Same-currency conversion (USD→USD, rate=1.0).</li>
- *   <li>Very small amounts (fractional cents) rounded correctly.</li>
- *   <li>Large amounts retain full precision.</li>
- *   <li>ConversionRequest DTO overload delegates correctly.</li>
- *   <li>Timestamp is populated and recent (within 5 seconds of now).</li>
- *   <li>ExchangeRateProvider is called exactly once per convert().</li>
- * </ul>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ConversionService – Unit Tests")
@@ -58,14 +42,21 @@ class ConversionServiceTest {
     @Mock
     private CurrencyRepository currencyRepository;
 
+    @Mock
+    private ConversionHistoryRepository historyRepository;
+
     @InjectMocks
     private ConversionService conversionService;
 
     @BeforeEach
     void setUpCurrencyValidation() {
-        // Default: all currency codes exist in the database.
+        // Default: all currency codes exist in the database and return a mock Currency entity.
         // Individual tests override this for error-case scenarios.
-        lenient().when(currencyRepository.existsById(anyString())).thenReturn(true);
+        lenient().when(currencyRepository.findById(anyString()))
+                .thenAnswer(invocation -> {
+                    String code = invocation.getArgument(0);
+                    return Optional.of(new Currency(code, code + " Name", "$"));
+                });
     }
 
     // -------------------------------------------------------------------------
@@ -73,7 +64,7 @@ class ConversionServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("convert(USD, EUR, 100) with rate 0.85 returns result 85.0000")
+    @DisplayName("convert(USD, EUR, 100) with rate 0.85 returns result 85.0000 and saves history")
     void convert_usdToEur_100units_rate085_returns85() {
         // Arrange
         mockRate("USD", "EUR", new BigDecimal("0.85"));
@@ -81,9 +72,11 @@ class ConversionServiceTest {
         // Act
         ConversionResponse response = conversionService.convert("USD", "EUR", new BigDecimal("100"));
 
-        // Assert — primary acceptance criterion
-        assertThat(response.getResult())
-                .isEqualByComparingTo(new BigDecimal("85.0000"));
+        // Assert
+        assertThat(response.getResult()).isEqualByComparingTo(new BigDecimal("85.0000"));
+        
+        // Verify history was saved
+        verify(historyRepository, times(1)).save(any(ConversionHistory.class));
     }
 
     // -------------------------------------------------------------------------
@@ -93,14 +86,11 @@ class ConversionServiceTest {
     @Test
     @DisplayName("convert() populates all ConversionResponse fields correctly")
     void convert_populatesAllResponseFields() {
-        // Arrange
         LocalDateTime before = LocalDateTime.now();
         mockRate("USD", "EUR", new BigDecimal("0.85"));
 
-        // Act
         ConversionResponse response = conversionService.convert("USD", "EUR", new BigDecimal("250.00"));
 
-        // Assert — every field
         assertThat(response.getFrom()).isEqualTo("USD");
         assertThat(response.getTo()).isEqualTo("EUR");
         assertThat(response.getAmount()).isEqualByComparingTo(new BigDecimal("250.00"));
@@ -112,14 +102,11 @@ class ConversionServiceTest {
     @Test
     @DisplayName("Timestamp is populated and within 5 seconds of the call")
     void convert_timestamp_isRecentAndNotNull() {
-        // Arrange
         mockRate("GBP", "JPY", new BigDecimal("198.53"));
         LocalDateTime before = LocalDateTime.now();
 
-        // Act
         ConversionResponse response = conversionService.convert("GBP", "JPY", new BigDecimal("10"));
 
-        // Assert
         assertThat(response.getTimestamp())
                 .isNotNull()
                 .isAfterOrEqualTo(before)
@@ -133,7 +120,6 @@ class ConversionServiceTest {
     @Test
     @DisplayName("Result is rounded to exactly 4 decimal places (HALF_UP)")
     void convert_result_isRoundedToFourDecimalPlaces() {
-        // 100 × 0.8542 = 85.42 → scale=4: 85.4200
         mockRate("USD", "EUR", new BigDecimal("0.8542"));
 
         ConversionResponse response = conversionService.convert("USD", "EUR", new BigDecimal("100"));
@@ -145,7 +131,6 @@ class ConversionServiceTest {
     @Test
     @DisplayName("HALF_UP rounding: 1 × 0.33335 rounds up to 0.3334")
     void convert_halfUpRounding_roundsCorrectly() {
-        // 1 × 0.33335 = 0.33335 → HALF_UP at 4 d.p. = 0.3334
         mockRate("USD", "EUR", new BigDecimal("0.33335"));
 
         ConversionResponse response = conversionService.convert("USD", "EUR", BigDecimal.ONE);
@@ -166,7 +151,6 @@ class ConversionServiceTest {
     @Test
     @DisplayName("Very small amount (0.01) converted correctly")
     void convert_minimumAmount_convertedCorrectly() {
-        // 0.01 × 0.85 = 0.0085 → scale=4: 0.0085
         mockRate("USD", "EUR", new BigDecimal("0.85"));
 
         ConversionResponse response = conversionService.convert("USD", "EUR", new BigDecimal("0.01"));
@@ -177,7 +161,6 @@ class ConversionServiceTest {
     @Test
     @DisplayName("Large amount (1,000,000) retains full precision")
     void convert_largeAmount_retainsFullPrecision() {
-        // 1_000_000 × 0.8542 = 854_200.0000
         mockRate("USD", "EUR", new BigDecimal("0.8542"));
 
         ConversionResponse response = conversionService.convert(
@@ -193,42 +176,40 @@ class ConversionServiceTest {
     @Test
     @DisplayName("Unsupported 'from' currency throws ResourceNotFoundException")
     void convert_unsupportedFromCurrency_throwsResourceNotFoundException() {
-        // Override default mock: "XYZ" does not exist
-        when(currencyRepository.existsById("XYZ")).thenReturn(false);
+        when(currencyRepository.findById("XYZ")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> conversionService.convert("XYZ", "EUR", new BigDecimal("100")))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("XYZ");
 
-        // Provider should NOT be called — validation must short-circuit
         verifyNoInteractions(exchangeRateProvider);
+        verifyNoInteractions(historyRepository);
     }
 
     @Test
     @DisplayName("Unsupported 'to' currency throws ResourceNotFoundException")
     void convert_unsupportedToCurrency_throwsResourceNotFoundException() {
-        when(currencyRepository.existsById("USD")).thenReturn(true);
-        when(currencyRepository.existsById("ZZZ")).thenReturn(false);
+        when(currencyRepository.findById("USD")).thenReturn(Optional.of(new Currency("USD", "US Dollar", "$")));
+        when(currencyRepository.findById("ZZZ")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> conversionService.convert("USD", "ZZZ", new BigDecimal("100")))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("ZZZ");
 
         verifyNoInteractions(exchangeRateProvider);
+        verifyNoInteractions(historyRepository);
     }
 
     @Test
     @DisplayName("'from' is validated first — 'to' is not checked if 'from' is invalid")
     void convert_fromValidatedBeforeTo() {
-        when(currencyRepository.existsById("BAD")).thenReturn(false);
-        // "EUR" would return true from the lenient default, but should never be reached
+        when(currencyRepository.findById("BAD")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> conversionService.convert("BAD", "EUR", BigDecimal.TEN))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("BAD");
 
-        // existsById("EUR") should never have been called
-        verify(currencyRepository, never()).existsById("EUR");
+        verify(currencyRepository, never()).findById("EUR");
     }
 
     // -------------------------------------------------------------------------
@@ -281,9 +262,6 @@ class ConversionServiceTest {
     // Factory helper
     // -------------------------------------------------------------------------
 
-    /**
-     * Stubs the provider to return a fixed rate for the given currency pair.
-     */
     private void mockRate(String from, String to, BigDecimal rate) {
         ExchangeRateResponse rateResponse = new ExchangeRateResponse(from, to, rate, LocalDate.now());
         when(exchangeRateProvider.getRateDetails(from, to)).thenReturn(rateResponse);
