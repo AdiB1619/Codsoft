@@ -44,3 +44,6 @@ desktop.ini
 application-prod.properties
 application-local.properties
 *.env
+
+# ---- AI tooling (internal agent config — not for version control) ----
+AGENTS.md
