@@ -83,8 +83,8 @@ Layered architecture — Controller → Service → Repository — with DTOs at 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/AdiB1619/Codsoft/tree/main/Task%202%20-%20Student%20Management%20System
-cd student-management-system
+git clone https://github.com/AdiB1619/codsoft_tasks.git
+cd "codsoft_tasks/Task 2 - Student Management System"
 ```
 
 ### 2. Set up the database
@@ -94,27 +94,38 @@ mysql -u root -p < database/schema.sql
 mysql -u root -p < database/seed-data.sql
 ```
 
-### 3. Run the backend
+### 3. Configure backend credentials
+
+Create `backend/src/main/resources/application-dev.properties`:
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/sms_db?useSSL=false&serverTimezone=UTC
+spring.datasource.username=YOUR_MYSQL_USERNAME
+spring.datasource.password=YOUR_MYSQL_PASSWORD
+```
+
+> This file is already in `.gitignore` — credentials will never be committed.
+
+### 4. Run the backend
 
 ```bash
 cd backend
-# set DB credentials via environment variables or application-dev.properties
 mvn spring-boot:run
 ```
 
 Backend runs at `http://localhost:8080`.
 
-### 4. Run the frontend
+### 5. Run the frontend
 
 ```bash
 cd frontend
-cp .env.example .env
-# set VITE_API_BASE_URL in .env
 npm install
 npm run dev
 ```
 
 Frontend runs at `http://localhost:5173`.
+
+> The frontend is pre-configured to call `http://localhost:8080/api/v1`. To change this, copy `.env.example` to `.env` and set `VITE_API_BASE_URL`.
 
 ### Environment Variables
 
@@ -127,9 +138,26 @@ Frontend runs at `http://localhost:5173`.
 
 ## API Documentation
 
-- Interactive Swagger UI: `http://localhost:8080/swagger-ui.html` (once running locally)
-- Postman collection: [`postman/Student-Management-System.postman_collection.json`](postman/Student-Management-System.postman_collection.json)
-- Full endpoint reference: [`docs/api-documentation.md`](docs/api-documentation.md)
+- **Swagger UI:** `http://localhost:8080/swagger-ui/index.html` (live, once backend is running)
+- **Postman collection:** [`postman/`](postman/)
+- **Full reference:** [`docs/api-documentation.md`](docs/api-documentation.md)
+
+**Base URL:** `http://localhost:8080/api/v1`
+
+| Method | Endpoint | Description | Status Codes |
+|---|---|---|---|
+| `POST` | `/students` | Create a student | 201, 400, 404, 409 |
+| `GET` | `/students` | List students (paginated, filtered, searched) | 200, 400 |
+| `GET` | `/students/{id}` | Get one student by ID | 200, 404 |
+| `PUT` | `/students/{id}` | Full update of a student | 200, 400, 404, 409 |
+| `PATCH` | `/students/{id}/status` | Update status only | 200, 400, 404 |
+| `DELETE` | `/students/{id}` | Delete a student | 204, 404 |
+| `POST` | `/students/{id}/profile-image` | Upload/replace profile image | 200, 400, 404 |
+| `DELETE` | `/students/{id}/profile-image` | Remove profile image | 204, 404 |
+| `GET` | `/students/export` | Export filtered list as CSV | 200, 400 |
+| `GET` | `/students/stats` | Dashboard statistics | 200 |
+| `GET` | `/courses` | List all courses | 200 |
+| `POST` | `/courses` | Create a course | 201, 400, 409 |
 
 ## Project Structure
 
@@ -160,9 +188,8 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
 
 ## Author
 
-**Aditya** — [GitHub](https://github.com/AdiB1619) · [LinkedIn](https://linkedin.com/in/Aditya)
+**Aditya Bachute** — [GitHub](https://github.com/AdiB1619)
 
 ## Acknowledgments
 
 Built as part of the [CodSoft](https://www.codsoft.in) Java Development Virtual Internship.
-`````
